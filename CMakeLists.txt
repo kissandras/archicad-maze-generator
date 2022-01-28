@@ -1,4 +1,4 @@
-cmake_minimum_required (VERSION 3.16)
+﻿cmake_minimum_required (VERSION 3.16)
 
 function (SetCompilerOptions target)
 	target_compile_features (${target} PUBLIC cxx_std_14)
@@ -7,6 +7,7 @@ function (SetCompilerOptions target)
 		target_compile_options (${target} PUBLIC /W4 /WX
 			/Zc:wchar_t-
 			/wd4499
+			/EHsc
 		)
 	else ()
 		target_compile_options (${target} PUBLIC -Wall -Wextra -Werror
@@ -22,15 +23,19 @@ function (SetCompilerOptions target)
 	endif ()
 endfunction ()
 
+include(${CMAKE_BINARY_DIR}/conanbuildinfo.cmake)
+set (CONAN_DISABLE_CHECK_COMPILER true)
+conan_basic_setup ()
+
 set_property (GLOBAL PROPERTY USE_FOLDERS ON)
 
 set (CMAKE_SUPPRESS_REGENERATION 1)
 set (CMAKE_CONFIGURATION_TYPES Debug;Release;RelWithDebInfo)
-set (AC_API_DEVKIT_DIR $ENV{AC_API_DEVKIT_DIR} CACHE PATH "API DevKit directory.")
+set (AC_API_DEVKIT_DIR ${CONAN_ARCHICAD-APIDEVKIT_ROOT} CACHE PATH "API DevKit directory.")
 set (AC_ADDON_NAME "ExampleAddOn" CACHE STRING "Add-On name.")
 set (AC_ADDON_LANGUAGE "INT" CACHE STRING "Add-On language code.")
 
-set (ACAPINC_FILE_LOCATION ${AC_API_DEVKIT_DIR}/Support/Inc/ACAPinc.h)
+set (ACAPINC_FILE_LOCATION ${AC_API_DEVKIT_DIR}/Inc/ACAPinc.h)
 if (EXISTS ${ACAPINC_FILE_LOCATION})
 	file (READ ${ACAPINC_FILE_LOCATION} ACAPIncContent)
 	string (REGEX MATCHALL "#define[ \t]+ServerMainVers_([0-9][0-9])" VersionList ${ACAPIncContent})
@@ -102,7 +107,7 @@ else ()
 		COMMENT "Compiling resources..."
 		COMMAND ${CMAKE_COMMAND} -E make_directory "${ResourceObjectsDir}"
 		COMMAND python "${AddOnResourcesFolderAbsolute}/Tools/CompileResources.py" "${AC_ADDON_LANGUAGE}" "${AC_API_DEVKIT_DIR}" "${AddOnSourcesFolderAbsolute}" "${AddOnResourcesFolderAbsolute}" "${ResourceObjectsDir}" "${CMAKE_BINARY_DIR}/$<CONFIG>/${AC_ADDON_NAME}.bundle/Contents/Resources"
-		COMMAND ${CMAKE_COMMAND} -E copy "${AC_API_DEVKIT_DIR}/Support/Inc/PkgInfo" "${CMAKE_BINARY_DIR}/$<CONFIG>/${AC_ADDON_NAME}.bundle/Contents/PkgInfo"
+		COMMAND ${CMAKE_COMMAND} -E copy "${AC_API_DEVKIT_DIR}/Inc/PkgInfo" "${CMAKE_BINARY_DIR}/$<CONFIG>/${AC_ADDON_NAME}.bundle/Contents/PkgInfo"
 		COMMAND ${CMAKE_COMMAND} -E touch "${ResourceObjectsDir}/AddOnResources.stamp"
 	)
 endif ()
@@ -145,31 +150,31 @@ endif ()
 
 target_include_directories (AddOn PUBLIC
 	${AddOnSourcesFolder}
-	${AC_API_DEVKIT_DIR}/Support/Inc
+	${AC_API_DEVKIT_DIR}/Inc
 )
 
 if (WIN32)
 	target_link_libraries (AddOn
-		"$<$<CONFIG:Debug>:${AC_API_DEVKIT_DIR}/Support/Lib/Win/ACAP_STATD.lib>"
-		"$<$<CONFIG:Release>:${AC_API_DEVKIT_DIR}/Support/Lib/Win/ACAP_STAT.lib>"
-		"$<$<CONFIG:RelWithDebInfo>:${AC_API_DEVKIT_DIR}/Support/Lib/Win/ACAP_STAT.lib>"
+		"$<$<CONFIG:Debug>:${AC_API_DEVKIT_DIR}/Lib/Win/ACAP_STATD.lib>"
+		"$<$<CONFIG:Release>:${AC_API_DEVKIT_DIR}/Lib/Win/ACAP_STAT.lib>"
+		"$<$<CONFIG:RelWithDebInfo>:${AC_API_DEVKIT_DIR}/Lib/Win/ACAP_STAT.lib>"
 	)
 else ()
 	find_library (CocoaFramework Cocoa)
 	target_link_libraries (AddOn
-		"${AC_API_DEVKIT_DIR}/Support/Lib/Mactel/libACAP_STAT.a"
+		"${AC_API_DEVKIT_DIR}/Lib/Mactel/libACAP_STAT.a"
 		${CocoaFramework}
 	)
 endif ()
 
 SetCompilerOptions (AddOn)
-file (GLOB ModuleFolders ${AC_API_DEVKIT_DIR}/Support/Modules/*)
+file (GLOB ModuleFolders ${AC_API_DEVKIT_DIR}/Modules/*)
 target_include_directories (AddOn PUBLIC ${ModuleFolders})
 if (WIN32)
-	file (GLOB LibFilesInFolder ${AC_API_DEVKIT_DIR}/Support/Modules/*/*/*.lib)
+	file (GLOB LibFilesInFolder ${AC_API_DEVKIT_DIR}/Modules/*/*/*.lib)
 	target_link_libraries (AddOn ${LibFilesInFolder})
 else ()
-	file (GLOB FrameworkFilesInFolder ${AC_API_DEVKIT_DIR}/Support/Frameworks/*.framework)
+	file (GLOB FrameworkFilesInFolder ${AC_API_DEVKIT_DIR}/Frameworks/*.framework)
 	target_link_libraries (AddOn ${FrameworkFilesInFolder})
 endif ()
 add_dependencies (AddOn AddOnResources)

@@ -1,0 +1,5 @@
+[requires]
+archicad-apidevkit/25@archicad-apidevkit/25
+
+ [generators]
+ cmake

@@ -1,0 +1,46 @@
+name: Build
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+
+jobs:
+  build:
+
+    runs-on: ${{matrix.os-type}}
+    
+    strategy:
+      matrix:
+        os-type: [windows-latest, macos-latest]
+        configuration: [Debug, Release, RelWithDebInfo] 
+
+    steps:
+    - name: Checkout source
+      uses: actions/checkout@v2
+
+    - name: Get Conan
+      uses: turtlebrowser/get-conan@v1.0
+
+    - name: Create Conan default profile
+      run: conan profile new default --detect
+
+    - name: Add IS remote to Conan
+      run: conan remote add is http://5.2.200.19:9300 False
+
+    - name: Set Conan user and password
+      run: conan user demo -p demo -r is
+
+    - name: Install dependencies
+      run: conan install . --install-folder=${{github.workspace}}/build
+
+    - name: Configure
+      run: cmake -B ${{github.workspace}}/Build -DCMAKE_BUILD_TYPE=${{matrix.configuration}}
+
+    - name: Build
+      run: cmake --build ${{github.workspace}}/Build --config ${{matrix.configuration}}
+
+    - name: Test
+      working-directory: ${{github.workspace}}/Build
+      run: ctest -C ${{matrix.configuration}}
